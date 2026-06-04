@@ -27,6 +27,7 @@ class SpaTemDataset(Dataset):
         height: int = 1024,
         width: int = 1024,
         has_gt_target: bool = True,  # if False, use skeleton as image and fmask for target samples
+        min_input_fmask_ratio: float = 0.02,
     ):
         self.data_dir = data_dir
         self.camera_path_pat = camera_path_pat
@@ -34,6 +35,7 @@ class SpaTemDataset(Dataset):
         self.fmask_path_pat = fmask_path_pat
         self.skeleton_path_pat = skeleton_path_pat
         self.scene_label = scene_label
+        self.min_input_fmask_ratio = float(min_input_fmask_ratio)
 
         if "$" in self.data_dir:
             self.data_dir = osp.expandvars(self.data_dir)
@@ -139,8 +141,13 @@ class SpaTemDataset(Dataset):
                 raise AssertionError(
                     f"Error: image size: {image.size} != fmask size: {fmask.size} != skeleton size: {skeleton.size}"
                 )
-            if self.has_gt_target and spa_label in input_spa_labels and TF.to_tensor(fmask).mean() <= 0.02:
-                raise AssertionError(f"Error: foreground mask < 2%. Please check the data.")
+            fmask_ratio = float(TF.to_tensor(fmask).mean())
+            if self.has_gt_target and spa_label in input_spa_labels and fmask_ratio <= self.min_input_fmask_ratio:
+                raise AssertionError(
+                    "Error: foreground mask ratio "
+                    f"({fmask_ratio:.6f}) <= min_input_fmask_ratio ({self.min_input_fmask_ratio:.6f}). "
+                    "Please check the data or lower the threshold."
+                )
 
             # transform the data
             image = self.transform_image(image, crop)

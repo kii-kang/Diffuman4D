@@ -39,7 +39,7 @@ def inference(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         runner.evaluate()
 
 
-@hydra.main(version_base="1.3", config_path="configs", config_name="test.yaml")
+@hydra.main(version_base="1.3", config_path="configs", config_name="test")
 def main(cfg: DictConfig) -> Optional[float]:
     """Main entry point"""
     print_config_tree(cfg, resolve=True, save_to_file=True)

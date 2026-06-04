@@ -1,0 +1,219 @@
+{
+  "warning_reprojection_threshold_px": 3.0,
+  "cameras": {
+    "test2_c1": {
+      "width": 3840,
+      "height": 2160,
+      "image_path": "/Users/carbonhouse_mit/Documents/2025/sema-performance-repository/video-processing/Diffuman4D/raw_data/results_cropped/c1-ref.png",
+      "num_correspondences": 7,
+      "inlier_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        6
+      ],
+      "reprojection_rmse_px": 9.106846371258886,
+      "reprojection_errors_px": [
+        1.9959817971527043,
+        2.7983060660494945,
+        2.741255887688677,
+        16.09594895627259,
+        7.886106472342214,
+        13.659377031235685,
+        7.305120314877529
+      ],
+      "camera_center_world": [
+        0.44,
+        0.65,
+        1.4497919442602099
+      ],
+      "xy_error": 0.0,
+      "fixed_xy_second_pass_used": true,
+      "intrinsics": {
+        "fx": 2543.0016,
+        "fy": 2543.0016,
+        "cx": 1920.0,
+        "cy": 1080.0
+      },
+      "distortion": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "unconstrained_camera_center_world": [
+        0.7101295239921298,
+        0.7736566405635258,
+        1.5125727050277897
+      ],
+      "unconstrained_reprojection_rmse_px": 11.515957825606263,
+      "unconstrained_xy_error": 0.2970874021019263,
+      "focal_search_scale": 0.99336
+    },
+    "test2_c2": {
+      "width": 3840,
+      "height": 2160,
+      "image_path": "/Users/carbonhouse_mit/Documents/2025/sema-performance-repository/video-processing/Diffuman4D/raw_data/results_cropped/c2-ref.png",
+      "num_correspondences": 7,
+      "inlier_indices": [
+        0,
+        2,
+        3,
+        4,
+        6
+      ],
+      "reprojection_rmse_px": 16.168579903210734,
+      "reprojection_errors_px": [
+        15.830573259336047,
+        32.227265717690436,
+        14.557741540190019,
+        10.766745577996298,
+        7.539799240299292,
+        9.970041361929061,
+        7.527030012751921
+      ],
+      "camera_center_world": [
+        0.47,
+        27.62,
+        1.2985708294041984
+      ],
+      "xy_error": 0.0,
+      "fixed_xy_second_pass_used": true,
+      "intrinsics": {
+        "fx": 2566.3488,
+        "fy": 2566.3488,
+        "cx": 1920.0,
+        "cy": 1080.0
+      },
+      "distortion": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "unconstrained_camera_center_world": [
+        0.42630423932991635,
+        27.528733347659575,
+        1.4020754343071926
+      ],
+      "unconstrained_reprojection_rmse_px": 19.910587799362037,
+      "unconstrained_xy_error": 0.10118755521290872,
+      "focal_search_scale": 1.00248
+    },
+    "test2_c3": {
+      "width": 3840,
+      "height": 2160,
+      "image_path": "/Users/carbonhouse_mit/Documents/2025/sema-performance-repository/video-processing/Diffuman4D/raw_data/results_cropped/c3-ref.png",
+      "num_correspondences": 10,
+      "inlier_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "reprojection_rmse_px": 4.905263753867418,
+      "reprojection_errors_px": [
+        4.582918370083166,
+        2.9539702065785587,
+        4.2383062119959956,
+        6.075426361714971,
+        3.8916796267674876,
+        4.090353744021727,
+        7.679862611275497,
+        5.2167458845888,
+        5.592980360131603,
+        2.5808290196564974
+      ],
+      "camera_center_world": [
+        14.2,
+        27.57,
+        1.3329989570699572
+      ],
+      "xy_error": 0.0,
+      "fixed_xy_second_pass_used": true,
+      "intrinsics": {
+        "fx": 2554.0608,
+        "fy": 2554.0608,
+        "cx": 1920.0,
+        "cy": 1080.0
+      },
+      "distortion": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "unconstrained_camera_center_world": [
+        14.317776783593933,
+        27.601176805641806,
+        1.3298105799549236
+      ],
+      "unconstrained_reprojection_rmse_px": 2.645371290968371,
+      "unconstrained_xy_error": 0.12183334504050716,
+      "focal_search_scale": 0.99768
+    },
+    "test2_c4": {
+      "width": 3840,
+      "height": 2160,
+      "image_path": "/Users/carbonhouse_mit/Documents/2025/sema-performance-repository/video-processing/Diffuman4D/raw_data/results_cropped/c4-ref.png",
+      "num_correspondences": 10,
+      "inlier_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "reprojection_rmse_px": 3.8125445941670333,
+      "reprojection_errors_px": [
+        2.523630646570139,
+        1.283425151708146,
+        1.9654003934600046,
+        2.0071727585373,
+        1.2895333490599363,
+        0.30669516933105007,
+        5.649312278405003,
+        5.679394902126226,
+        5.219828708873973,
+        6.022765499926264
+      ],
+      "camera_center_world": [
+        14.456523948574224,
+        -0.1905349378520622,
+        1.325384156702831
+      ],
+      "xy_error": null,
+      "fixed_xy_second_pass_used": false,
+      "intrinsics": {
+        "fx": 2981.888,
+        "fy": 2981.888,
+        "cx": 1920.0,
+        "cy": 1080.0
+      },
+      "distortion": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "focal_search_scale": 1.1648
+    }
+  }
+}

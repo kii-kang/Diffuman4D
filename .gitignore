@@ -4,3 +4,9 @@ __pycache__
 /data
 /models
 /output
+/.vscode
+/diffuman4d_prepared
+/raw_data/calibration_viz
+/raw_data/outputs
+/raw_data/results
+/raw_data/results_cropped

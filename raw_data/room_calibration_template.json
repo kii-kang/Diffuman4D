@@ -1,0 +1,348 @@
+{
+  "_notes": [
+    "Fill the world_points with measured coordinates in one shared room coordinate system.",
+    "Recommended convention: x and y on the floor plane, z upward, one room corner at [0, 0, 0].",
+    "Use room corners and both bottom/top column corners so the points span the full volume.",
+    "Click the image_points on the original distorted images. Do not undistort first if you pass distortion coefficients below.",
+    "If you do not know the distortion yet, leave it as zeros and solve pose first. Then replace with checkerboard/Charuco-calibrated distortion later and rerun.",
+    "The 24mm lens value only gives an initial focal-length guess. It does not determine distortion coefficients by itself.",
+    "known_xy is now used by a second-pass optimizer that keeps the camera center x/y fixed and refines only rotation plus z.",
+    "focal_search can optionally loosen fx/fy together for a specific camera while keeping cx/cy and distortion fixed.",
+    "If your footage already has in-camera lens correction baked in, keeping distortion at zeros is reasonable as a first pass.",
+    "The image_points below are full-resolution 3840x2160 coordinates, rounded to integers and converted from bottom-left input into top-left image coordinates.",
+    "Per-camera reference stills are raw_data/results_cropped/c1-ref.png through c4-ref.png, and frame_glob points at raw_data/results_cropped/<camera>/**/rgb_full/*.png so transforms_room.json enumerates the full-resolution RGB frames.",
+    "The room_top_* z values still need to match the real visible top-corner height in your room coordinate system. Leaving them at 1.0 will distort the recovered camera z scale."
+  ],
+  "defaults": {
+    "image_size": [
+      3840,
+      2160
+    ],
+    "focal_length_mm": 24.0,
+    "sensor_width_mm": 36.0,
+    "sensor_height_mm": 20.25,
+    "principal_point": null,
+    "distortion": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "pnp_flag": "AUTO",
+    "pnp_ransac_error_px": 8.0,
+    "reprojection_warning_px": 3.0,
+    "near": 0.2,
+    "far": 20.0,
+    "bounds": [
+      [
+        -1000000.0,
+        -1000000.0,
+        -1000000.0
+      ],
+      [
+        1000000.0,
+        1000000.0,
+        1000000.0
+      ]
+    ],
+    "refine_intrinsics": {
+      "enabled": false,
+      "fix_principal_point": true,
+      "fix_aspect_ratio": true,
+      "zero_tangent_dist": false,
+      "fix_k3": true,
+      "fix_k4": true,
+      "fix_k5": true,
+      "fix_k6": true
+    },
+    "lock_xy_second_pass": {
+      "enabled": true,
+      "max_iterations": 50,
+      "lambda_init": 0.001,
+      "rotation_eps": 1e-05,
+      "z_eps": 0.0001,
+      "step_tolerance": 1e-08,
+      "cost_tolerance": 1e-10,
+      "damping_scale": 1.0,
+      "max_backtracks": 8
+    },
+    "focal_search": {
+      "enabled": true,
+      "min_scale": 0.75,
+      "max_scale": 1.35,
+      "num_steps": 11,
+      "passes": 4
+    }
+  },
+  "outputs": {
+    "transforms_path": "transforms_room.json",
+    "intri_path": "cameras/intri.yml",
+    "extri_path": "cameras/extri.yml",
+    "report_path": "calibration_report.json",
+    "viz_dir": "calibration_viz"
+  },
+  "world_points": {
+    "room_floor_00": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "room_floor_10": [
+      14.6,
+      0.0,
+      0.0
+    ],
+    "room_floor_11": [
+      14.6,
+      28.1,
+      0.0
+    ],
+    "room_floor_01": [
+      0.0,
+      28.1,
+      0.0
+    ],
+    "room_top_00": [
+      0.0,
+      0.0,
+      4.0
+    ],
+    "room_top_10": [
+      14.6,
+      0.0,
+      4.0
+    ],
+    "room_top_11": [
+      14.6,
+      28.1,
+      4.0
+    ],
+    "room_top_01": [
+      0.0,
+      28.1,
+      4.0
+    ],
+    "column_floor_00": [
+      8.1,
+      13.1,
+      0.0
+    ],
+    "column_floor_10": [
+      8.8,
+      13.1,
+      0.0
+    ],
+    "column_floor_11": [
+      8.8,
+      13.8,
+      0.0
+    ],
+    "column_floor_01": [
+      8.1,
+      13.8,
+      0.0
+    ],
+    "column_top_00": [
+      8.1,
+      13.1,
+      4.0
+    ],
+    "column_top_10": [
+      8.8,
+      13.1,
+      4.0
+    ],
+    "column_top_11": [
+      8.8,
+      13.8,
+      4.0
+    ],
+    "column_top_01": [
+      8.1,
+      13.8,
+      4.0
+    ]
+  },
+  "cameras": {
+    "test2_c1": {
+      "image_path": "results_cropped/c1-ref.png",
+      "frame_glob": "results_cropped/test2_c1/rgb_full/*.png",
+      "known_xy": [
+        0.44,
+        0.65
+      ],
+      "image_points": {
+        "room_floor_11": [
+          1790,
+          1162
+        ],
+        "room_floor_01": [
+          367,
+          1213
+        ],
+        "room_top_11": [
+          1784,
+          837
+        ],
+        "room_top_01": [
+          367,
+          806
+        ],
+        "column_top_01": [
+          1901,
+          616
+        ],
+        "column_top_00": [
+          1963,
+          598
+        ],
+        "column_top_10": [
+          2064,
+          607
+        ]
+      }
+    },
+    "test2_c2": {
+      "image_path": "results_cropped/c2-ref.png",
+      "frame_glob": "results_cropped/test2_c2/rgb_full/*.png",
+      "known_xy": [
+        0.47,
+        27.62
+      ],
+      "image_points": {
+        "room_floor_10": [
+          2067,
+          1145
+        ],
+        "room_floor_00": [
+          3492,
+          1166
+        ],
+        "room_top_10": [
+          2067,
+          826
+        ],
+        "room_top_00": [
+          3492,
+          750
+        ],
+        "column_top_11": [
+          1878,
+          622
+        ],
+        "column_top_10": [
+          1973,
+          612
+        ],
+        "column_top_00": [
+          2027,
+          627
+        ]
+      }
+    },
+    "test2_c3": {
+      "image_path": "results_cropped/c3-ref.png",
+      "frame_glob": "results_cropped/test2_c3/rgb_full/*.png",
+      "known_xy": [
+        14.20,
+        27.57
+      ],
+      "image_points": {
+        "room_floor_10": [
+          351,
+          1223
+        ],
+        "room_floor_00": [
+          1762,
+          1177
+        ],
+        "room_top_10": [
+          351,
+          785
+        ],
+        "room_top_00": [
+          1762,
+          855
+        ],
+        "column_floor_10": [
+          1460,
+          1294
+        ],
+        "column_floor_11": [
+          1508,
+          1304
+        ],
+        "column_floor_01": [
+          1621,
+          1298
+        ],
+        "column_top_10": [
+          1462,
+          627
+        ],
+        "column_top_11": [
+          1506,
+          608
+        ],
+        "column_top_01": [
+          1621,
+          619
+        ]
+      }
+    },
+    "test2_c4": {
+      "image_path": "results_cropped/c4-ref.png",
+      "frame_glob": "results_cropped/test2_c4/rgb_full/*.png",
+      "focal_search": {
+        "enabled": true,
+        "min_scale": 0.7,
+        "max_scale": 1.4,
+        "num_steps": 11,
+        "passes": 4
+      },
+      "image_points": {
+        "room_floor_01": [
+          1930,
+          1296
+        ],
+        "room_floor_11": [
+          3483,
+          1320
+        ],
+        "room_top_01": [
+          1928,
+          931
+        ],
+        "room_top_11": [
+          3472,
+          856
+        ],
+        "column_floor_00": [
+          2009,
+          1445
+        ],
+        "column_floor_10": [
+          2144,
+          1451
+        ],
+        "column_floor_11": [
+          2199,
+          1438
+        ],
+        "column_top_00": [
+          2004,
+          638
+        ],
+        "column_top_10": [
+          2137,
+          625
+        ],
+        "column_top_11": [
+          2190,
+          647
+        ]
+      }
+    }
+  }
+}

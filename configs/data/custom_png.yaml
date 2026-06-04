@@ -1,5 +1,5 @@
 _target_: src.data.spatem_dataset.SpaTemDataset
-data_dir: ./data/dna_rendering_processed
+data_dir: ./diffuman4d_prepared
 camera_path_pat: "{data_dir}/{scene_label}/transforms.json"
 image_path_pat: "{data_dir}/{scene_label}/images/{spa_label}/{tem_label}.png"
 fmask_path_pat: "{data_dir}/{scene_label}/fmasks/{spa_label}/{tem_label}.png"
