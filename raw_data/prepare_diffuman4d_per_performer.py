@@ -119,7 +119,13 @@ def parse_args() -> argparse.Namespace:
         "--virtual-ring-views",
         type=int,
         default=0,
-        help="Number of virtual target cameras to place on a ring around each window. Use 0 to disable.",
+        help="Number of virtual target cameras to create. Use 0 to disable virtual targets.",
+    )
+    parser.add_argument(
+        "--virtual-camera-layout",
+        choices=("near_real", "ring"),
+        default="near_real",
+        help="Virtual camera placement strategy. 'near_real' keeps targets close to the real cameras.",
     )
     parser.add_argument(
         "--virtual-ring-radius-scale",
@@ -138,6 +144,12 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=1.0,
         help="Scale factor applied to the average real-camera focal length for virtual cameras.",
+    )
+    parser.add_argument(
+        "--virtual-near-real-offset-deg",
+        type=float,
+        default=12.0,
+        help="Angular offset in degrees for the first shell of near-real virtual cameras.",
     )
     parser.add_argument(
         "--kpt-thr",
@@ -592,6 +604,94 @@ def build_virtual_ring_cameras(
     return virtual_cameras
 
 
+def build_virtual_near_real_cameras(
+    real_cameras: list[WindowCamera],
+    num_virtual_views: int,
+    lookat_z: float,
+    offset_deg: float,
+) -> list[WindowCamera]:
+    if num_virtual_views <= 0:
+        return []
+    if offset_deg <= 0.0:
+        raise ValueError("--virtual-near-real-offset-deg must be > 0 when using near_real layout.")
+
+    target = np.asarray([0.0, 0.0, float(lookat_z)], dtype=np.float64)
+    offset_rad = math.radians(float(offset_deg))
+    start_index = len(real_cameras)
+    virtual_cameras = []
+    shell_index = 1
+
+    while len(virtual_cameras) < num_virtual_views:
+        for sign in (-1.0, 1.0):
+            for real_camera in real_cameras:
+                if len(virtual_cameras) >= num_virtual_views:
+                    break
+
+                position = real_camera.c2w_opengl[:3, 3]
+                radius_xy = float(np.hypot(position[0], position[1]))
+                base_angle = math.atan2(position[1], position[0])
+                angle = base_angle + sign * shell_index * offset_rad
+                virtual_position = np.asarray(
+                    [
+                        radius_xy * math.cos(angle),
+                        radius_xy * math.sin(angle),
+                        float(position[2]),
+                    ],
+                    dtype=np.float64,
+                )
+                c2w_opengl = build_lookat_opengl_c2w(virtual_position, target)
+                c2w_cv = c2w_opengl.copy()
+                c2w_cv[:3, 1:3] *= -1.0
+                w2c_cv = np.linalg.inv(c2w_cv)
+                rotation = w2c_cv[:3, :3]
+                tvec = w2c_cv[:3, 3]
+                rvec = cv2.Rodrigues(rotation)[0].reshape(3)
+                virtual_index = len(virtual_cameras)
+                virtual_cameras.append(
+                    WindowCamera(
+                        source_label=f"{real_camera.source_label}_near_{virtual_index:03d}",
+                        spa_label=f"{start_index + virtual_index:02d}",
+                        width=real_camera.width,
+                        height=real_camera.height,
+                        K=np.asarray(real_camera.K, dtype=np.float64),
+                        D=np.asarray(real_camera.D, dtype=np.float64),
+                        c2w_opengl=c2w_opengl,
+                        rotation_opencv=rotation,
+                        tvec_opencv=tvec,
+                        rvec_opencv=rvec,
+                    )
+                )
+        shell_index += 1
+
+    return virtual_cameras
+
+
+def build_virtual_cameras(
+    real_cameras: list[WindowCamera],
+    args: argparse.Namespace,
+) -> list[WindowCamera]:
+    if args.virtual_ring_views <= 0:
+        return []
+
+    if args.virtual_camera_layout == "ring":
+        return build_virtual_ring_cameras(
+            real_cameras=real_cameras,
+            num_virtual_views=args.virtual_ring_views,
+            radius_scale=args.virtual_ring_radius_scale,
+            lookat_z=args.virtual_ring_lookat_z,
+            focal_scale=args.virtual_ring_focal_scale,
+        )
+    if args.virtual_camera_layout == "near_real":
+        return build_virtual_near_real_cameras(
+            real_cameras=real_cameras,
+            num_virtual_views=args.virtual_ring_views,
+            lookat_z=args.virtual_ring_lookat_z,
+            offset_deg=args.virtual_near_real_offset_deg,
+        )
+
+    raise ValueError(f"Unsupported virtual camera layout: {args.virtual_camera_layout}")
+
+
 def build_window_camera_transforms_json(cameras: list[WindowCamera]) -> dict[str, Any]:
     frames = []
     for camera in cameras:
@@ -989,12 +1089,9 @@ def prepare_performer_windows(args: argparse.Namespace) -> None:
                 (images_dir / spa_label).mkdir(parents=True, exist_ok=True)
                 (fmasks_dir / spa_label).mkdir(parents=True, exist_ok=True)
 
-            virtual_window_cameras = build_virtual_ring_cameras(
+            virtual_window_cameras = build_virtual_cameras(
                 real_cameras=real_window_cameras,
-                num_virtual_views=args.virtual_ring_views,
-                radius_scale=args.virtual_ring_radius_scale,
-                lookat_z=args.virtual_ring_lookat_z,
-                focal_scale=args.virtual_ring_focal_scale,
+                args=args,
             )
             virtual_camera_mappings = [
                 {
@@ -1209,12 +1306,14 @@ def prepare_performer_windows(args: argparse.Namespace) -> None:
                 "ready_for_inference": ready_for_inference,
                 "missing_assets": missing_assets,
                 "carve_visual_hull": carve_config,
-                "virtual_ring": {
+                "virtual_cameras": {
                     "enabled": bool(virtual_window_cameras),
+                    "layout": args.virtual_camera_layout,
                     "views": len(virtual_window_cameras),
                     "radius_scale": float(args.virtual_ring_radius_scale),
                     "lookat_z": float(args.virtual_ring_lookat_z),
                     "focal_scale": float(args.virtual_ring_focal_scale),
+                    "near_real_offset_deg": float(args.virtual_near_real_offset_deg),
                 },
                 "recommended_inference": inference_overrides,
             }
@@ -1293,9 +1392,11 @@ def prepare_performer_windows(args: argparse.Namespace) -> None:
         "window_overlap": int(args.window_overlap),
         "min_window_frames": int(args.min_window_frames),
         "virtual_ring_views": int(args.virtual_ring_views),
+        "virtual_camera_layout": args.virtual_camera_layout,
         "virtual_ring_radius_scale": float(args.virtual_ring_radius_scale),
         "virtual_ring_lookat_z": float(args.virtual_ring_lookat_z),
         "virtual_ring_focal_scale": float(args.virtual_ring_focal_scale),
+        "virtual_near_real_offset_deg": float(args.virtual_near_real_offset_deg),
         "total_performers": len(summary_performers),
         "total_windows": total_windows,
         "performers": summary_performers,
