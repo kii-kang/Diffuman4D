@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -52,6 +53,12 @@ def parse_args() -> argparse.Namespace:
         help="Largest performer-window bbox dimension after canonical scaling.",
     )
     parser.add_argument(
+        "--source-scene-dir",
+        type=Path,
+        default=Path("diffuman4d_prepared/test2"),
+        help="Prepared global Diffuman4D scene to subset for images/fmasks/skeletons.",
+    )
+    parser.add_argument(
         "--window-size",
         type=int,
         default=30,
@@ -85,6 +92,11 @@ def parse_args() -> argparse.Namespace:
         "--overwrite",
         action="store_true",
         help="Overwrite existing output files.",
+    )
+    parser.add_argument(
+        "--skip-assets",
+        action="store_true",
+        help="Only write metadata/cameras/configs and do not copy images/fmasks/skeletons.",
     )
     return parser.parse_args()
 
@@ -324,6 +336,17 @@ def relpath_str(path: Path, start: Path) -> str:
         return str(path)
 
 
+def copy_file(src: Path, dst: Path, overwrite: bool) -> None:
+    if not src.is_file():
+        raise FileNotFoundError(f"Missing source asset: {src}")
+    if dst.exists():
+        if not overwrite:
+            raise FileExistsError(f"{dst} already exists. Use --overwrite to replace it.")
+        dst.unlink()
+    ensure_parent(dst)
+    shutil.copy2(src, dst)
+
+
 def write_json(path: Path, payload: Any, overwrite: bool) -> None:
     if path.exists() and not overwrite:
         raise FileExistsError(f"{path} already exists. Use --overwrite to replace it.")
@@ -340,6 +363,97 @@ def default_input_spa_indices(num_cameras: int) -> list[int]:
 
 def localize_point(point_world: np.ndarray, center_world: np.ndarray, scale: float) -> np.ndarray:
     return (point_world - center_world) * scale
+
+
+def load_scene_frame_name_map(source_scene_dir: Path) -> dict[int, str]:
+    scene_metadata_path = source_scene_dir / "scene_metadata.json"
+    if scene_metadata_path.is_file():
+        scene_metadata = json.loads(scene_metadata_path.read_text(encoding="utf-8"))
+        output_frame_names = scene_metadata.get("output_frame_names", {})
+        if output_frame_names:
+            return {int(source_frame): str(output_name) for source_frame, output_name in output_frame_names.items()}
+
+    image_root = source_scene_dir / "images"
+    first_camera_dir = next((path for path in sorted(image_root.iterdir()) if path.is_dir()), None)
+    if first_camera_dir is None:
+        raise FileNotFoundError(f"Could not infer frame names because {image_root} has no camera directories.")
+    stems = sorted(path.stem for path in first_camera_dir.iterdir() if path.is_file())
+    return {index: stem for index, stem in enumerate(stems)}
+
+
+def index_scene_assets(source_scene_dir: Path, asset_kind: str) -> dict[str, dict[str, Path]]:
+    asset_root = source_scene_dir / asset_kind
+    if not asset_root.is_dir():
+        raise FileNotFoundError(f"Missing asset directory: {asset_root}")
+
+    index: dict[str, dict[str, Path]] = {}
+    for camera_dir in sorted(asset_root.iterdir()):
+        if not camera_dir.is_dir():
+            continue
+        files_by_stem = {
+            path.stem: path
+            for path in sorted(camera_dir.iterdir())
+            if path.is_file()
+        }
+        if not files_by_stem:
+            raise FileNotFoundError(f"No files found under {camera_dir}")
+        index[camera_dir.name] = files_by_stem
+
+    if not index:
+        raise FileNotFoundError(f"No camera asset directories found in {asset_root}")
+    return index
+
+
+def copy_window_assets(
+    source_scene_dir: Path,
+    camera_mappings: list[dict[str, Any]],
+    window_frames: list[int],
+    images_dir: Path,
+    fmasks_dir: Path,
+    skeletons_dir: Path,
+    overwrite: bool,
+) -> dict[str, int]:
+    frame_name_map = load_scene_frame_name_map(source_scene_dir)
+    image_index = index_scene_assets(source_scene_dir, "images")
+    fmask_index = index_scene_assets(source_scene_dir, "fmasks")
+    skeleton_index = index_scene_assets(source_scene_dir, "skeletons")
+
+    copied_counts = {"images": 0, "fmasks": 0, "skeletons": 0}
+    asset_dirs = {
+        "images": images_dir,
+        "fmasks": fmasks_dir,
+        "skeletons": skeletons_dir,
+    }
+    asset_indices = {
+        "images": image_index,
+        "fmasks": fmask_index,
+        "skeletons": skeleton_index,
+    }
+
+    for camera_mapping in camera_mappings:
+        spa_label = str(camera_mapping["spa_label"])
+        for local_frame_index, source_frame in enumerate(window_frames):
+            source_frame_name = frame_name_map.get(int(source_frame))
+            if source_frame_name is None:
+                raise KeyError(
+                    f"Source frame {source_frame} is missing from {source_scene_dir}/scene_metadata.json output_frame_names"
+                )
+            local_frame_name = f"{local_frame_index:06d}"
+
+            for asset_kind in ["images", "fmasks", "skeletons"]:
+                by_camera = asset_indices[asset_kind].get(spa_label)
+                if by_camera is None:
+                    raise KeyError(f"{asset_kind}: missing camera label {spa_label} under {source_scene_dir}")
+                src = by_camera.get(source_frame_name)
+                if src is None:
+                    raise KeyError(
+                        f"{asset_kind}: missing source frame {source_frame_name} for camera {spa_label} in {source_scene_dir}"
+                    )
+                dst = asset_dirs[asset_kind] / spa_label / f"{local_frame_name}{src.suffix.lower()}"
+                copy_file(src, dst, overwrite=overwrite)
+                copied_counts[asset_kind] += 1
+
+    return copied_counts
 
 
 def prepare_performer_windows(args: argparse.Namespace) -> None:
@@ -470,6 +584,18 @@ def prepare_performer_windows(args: argparse.Namespace) -> None:
                     }
                 )
 
+            copied_assets = {"images": 0, "fmasks": 0, "skeletons": 0}
+            if not args.skip_assets:
+                copied_assets = copy_window_assets(
+                    source_scene_dir=args.source_scene_dir,
+                    camera_mappings=camera_mappings,
+                    window_frames=window_frames,
+                    images_dir=images_dir,
+                    fmasks_dir=fmasks_dir,
+                    skeletons_dir=skeletons_dir,
+                    overwrite=args.overwrite,
+                )
+
             input_spa_indices = default_input_spa_indices(len(window_cameras))
             inference_overrides = {
                 "data": "custom_png",
@@ -553,8 +679,10 @@ def prepare_performer_windows(args: argparse.Namespace) -> None:
                     "skeletons_dir": relpath_str(skeletons_dir, window_dir),
                     "cameras_dir": relpath_str(cameras_dir, window_dir),
                 },
-                "ready_for_inference": False,
-                "missing_assets": ["images", "fmasks", "skeletons"],
+                "source_scene_dir": str(args.source_scene_dir.resolve()),
+                "copied_asset_counts": copied_assets,
+                "ready_for_inference": not args.skip_assets,
+                "missing_assets": [] if not args.skip_assets else ["images", "fmasks", "skeletons"],
                 "carve_visual_hull": carve_config,
                 "recommended_inference": inference_overrides,
             }
@@ -619,6 +747,7 @@ def prepare_performer_windows(args: argparse.Namespace) -> None:
         "transforms_path": str(args.transforms),
         "output_base_dir": str(output_root),
         "camera_labels": ordered_source_camera_labels,
+        "source_scene_dir": str(args.source_scene_dir),
         "camera_mappings": [
             {"spa_label": f"{index:02d}", "source_camera_label": label, "camera_index": index}
             for index, label in enumerate(ordered_source_camera_labels)
