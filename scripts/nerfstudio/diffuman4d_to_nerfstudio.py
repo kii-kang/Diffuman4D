@@ -34,9 +34,16 @@ def diffuman4d_to_nerfstudio(data_dir: str, result_dir: str, input_cameras: list
         json.dump(cameras_input, f, indent=4)
     log.info(f"Saved nerfstudio cameras to {result_dir}/transforms.json and {result_dir}/transforms_input.json")
 
-    # copy point cloud
-    shutil.copy(f"{data_dir}/sparse_pcd.ply", f"{result_dir}/sparse_pcd.ply")
-    log.info(f"Saved point cloud to {result_dir}/sparse_pcd.ply")
+    # copy point cloud if available
+    sparse_pcd_path = f"{data_dir}/sparse_pcd.ply"
+    if osp.isfile(sparse_pcd_path):
+        shutil.copy(sparse_pcd_path, f"{result_dir}/sparse_pcd.ply")
+        log.info(f"Saved point cloud to {result_dir}/sparse_pcd.ply")
+    else:
+        log.warning(
+            f"Point cloud not found at {sparse_pcd_path}. "
+            "Skipping sparse_pcd.ply copy for Nerfstudio export."
+        )
 
     # predict foreground masks
     remove_background(
