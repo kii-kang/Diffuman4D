@@ -11,10 +11,79 @@ from scripts.preprocess.remove_background import remove_background
 log = RankedLogger(__name__, rank_zero_only=True)
 
 
+def _list_result_image_labels(images_dir: str) -> dict[str, list[str]]:
+    if not osp.isdir(images_dir):
+        return {}
+    labels_by_camera = {}
+    for camera_label in sorted(os.listdir(images_dir)):
+        camera_dir = osp.join(images_dir, camera_label)
+        if not osp.isdir(camera_dir):
+            continue
+        labels = []
+        for filename in sorted(os.listdir(camera_dir)):
+            path = osp.join(camera_dir, filename)
+            if osp.isfile(path):
+                labels.append(osp.splitext(filename)[0])
+        if labels:
+            labels_by_camera[camera_label] = labels
+    return labels_by_camera
+
+
+def _expand_frames_for_result_images(cameras: dict, result_images_dir: str) -> dict:
+    labels_by_camera = _list_result_image_labels(result_images_dir)
+    if not labels_by_camera:
+        return cameras
+
+    frames = cameras.get("frames", [])
+    frames_by_camera = {}
+    for frame in frames:
+        frames_by_camera.setdefault(frame["camera_label"], []).append(frame)
+
+    expanded_frames = []
+    changed = False
+
+    for camera_label, image_labels in labels_by_camera.items():
+        camera_frames = frames_by_camera.get(camera_label, [])
+        if not camera_frames:
+            continue
+
+        if len(camera_frames) == len(image_labels):
+            # Already has one transform entry per image.
+            expanded_frames.extend(camera_frames)
+            continue
+
+        if len(camera_frames) != 1:
+            # Keep the original frames if the structure is ambiguous.
+            expanded_frames.extend(camera_frames)
+            continue
+
+        changed = True
+        base_frame = camera_frames[0]
+        for frame_index, image_label in enumerate(image_labels):
+            frame = deepcopy(base_frame)
+            frame["frame"] = frame_index
+            frame["file_path"] = f"images/{camera_label}/{image_label}.png"
+            expanded_frames.append(frame)
+
+    if not changed:
+        return cameras
+
+    other_frames = []
+    known_labels = set(labels_by_camera.keys())
+    for frame in frames:
+        if frame["camera_label"] not in known_labels:
+            other_frames.append(frame)
+
+    cameras = deepcopy(cameras)
+    cameras["frames"] = expanded_frames + other_frames
+    return cameras
+
+
 def diffuman4d_to_nerfstudio(data_dir: str, result_dir: str, input_cameras: list[str] = None):
     # copy nerfstudio cameras
     cameras_path = f"{data_dir}/transforms.json"
     cameras = json.load(open(cameras_path))
+    cameras = _expand_frames_for_result_images(cameras, f"{result_dir}/images")
 
     if input_cameras is not None:
         cameras_input = deepcopy(cameras)
