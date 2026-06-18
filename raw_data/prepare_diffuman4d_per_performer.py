@@ -342,6 +342,20 @@ def write_easyvolcap_extrinsics(
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def compute_scene_norm(cameras: list[WindowCamera]) -> dict[str, Any]:
+    centers = np.stack([camera.c2w_opengl[:3, 3] for camera in cameras], axis=0)
+    min_bound = centers.min(axis=0)
+    max_bound = centers.max(axis=0)
+    center = (min_bound + max_bound) / 2.0
+    scale_denom = float(np.linalg.norm(max_bound - min_bound))
+    scale = 1.0 / scale_denom if scale_denom > 1e-8 else 1.0
+    return {
+        "center": center.astype(np.float64).tolist(),
+        "scale": float(scale),
+        "formula": "normalized_camera_center = (camera_center - center) * scale",
+    }
+
+
 def normalize_vector(vector: np.ndarray) -> np.ndarray:
     norm = float(np.linalg.norm(vector))
     if norm < 1e-8:
@@ -1012,9 +1026,10 @@ def prepare_performer_windows(args: argparse.Namespace) -> None:
                 bounds_min=canonical_bounds_min,
                 bounds_max=canonical_bounds_max,
             )
+            scene_norm_payload = compute_scene_norm(window_cameras)
             write_json(
                 cameras_dir / "scene_norm.json",
-                {"center": [0.0, 0.0, 0.0], "scale": 1.0},
+                scene_norm_payload,
                 overwrite=args.overwrite,
             )
 
@@ -1177,6 +1192,7 @@ def prepare_performer_windows(args: argparse.Namespace) -> None:
                     "formula": "local = (world - center_world) * uniform_scale",
                     "inverse_formula": "world = local / uniform_scale + center_world",
                 },
+                "camera_scene_norm": scene_norm_payload,
                 "frame_records": frame_records,
                 "expected_assets": {
                     "images_dir": relpath_str(images_dir, window_dir),
@@ -1217,7 +1233,7 @@ def prepare_performer_windows(args: argparse.Namespace) -> None:
                     "notes": [
                         "Populate real-camera images/, fmasks/, and skeletons/ before running inference.",
                         "Virtual target cameras rely on generated skeleton maps plus data.has_gt_target=false.",
-                        "The camera_path_pat override points Diffuman4D at cameras/transforms.json and uses scene_norm.json from the same directory so local canonical coordinates stay unchanged.",
+                        "The camera_path_pat override points Diffuman4D at cameras/transforms.json and uses scene_norm.json from the same directory to normalize camera scale into the model's expected range.",
                     ],
                 },
                 overwrite=args.overwrite,
