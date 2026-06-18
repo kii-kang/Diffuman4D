@@ -1088,7 +1088,7 @@ def prepare_performer_windows(args: argparse.Namespace) -> None:
                 "exp": "demo_4d_custom_png",
                 "data.data_dir": str(window_dir.resolve()),
                 "data.scene_label": ".",
-                "data.camera_path_pat": "{data_dir}/{scene_label}/cameras",
+                "data.camera_path_pat": "{data_dir}/{scene_label}/cameras/transforms.json",
                 "data.has_gt_target": has_gt_target,
                 "sampler.spa_label_range": [0, len(window_cameras), 1],
                 "sampler.input_spa_labels": input_spa_indices,
@@ -1111,7 +1111,7 @@ def prepare_performer_windows(args: argparse.Namespace) -> None:
                 f"exp={inference_overrides['exp']} "
                 f"data.data_dir={window_dir.resolve()} "
                 "data.scene_label=. "
-                "'data.camera_path_pat=\"{data_dir}/{scene_label}/cameras\"' "
+                "'data.camera_path_pat=\"{data_dir}/{scene_label}/cameras/transforms.json\"' "
                 f"data.has_gt_target={str(has_gt_target).lower()} "
                 f"'sampler.spa_label_range=[0,{len(window_cameras)},1]' "
                 f"'sampler.input_spa_labels={input_spa_indices}' "
@@ -1213,7 +1213,7 @@ def prepare_performer_windows(args: argparse.Namespace) -> None:
                     "notes": [
                         "Populate real-camera images/, fmasks/, and skeletons/ before running inference.",
                         "Virtual target cameras rely on generated skeleton maps plus data.has_gt_target=false.",
-                        "The camera_path_pat override points Diffuman4D at cameras/ so scene_norm.json keeps local canonical coordinates unchanged.",
+                        "The camera_path_pat override points Diffuman4D at cameras/transforms.json and uses scene_norm.json from the same directory so local canonical coordinates stay unchanged.",
                     ],
                 },
                 overwrite=args.overwrite,

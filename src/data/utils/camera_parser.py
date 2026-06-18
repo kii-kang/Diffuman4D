@@ -75,13 +75,18 @@ def parse_cameras(camera_path: str, coord_system: str = "opencv", normalize_scen
 
     # Normalize the poses
     if normalize_scene:
-        norm_json = f"{camera_path}/scene_norm.json"
-        if os.path.isfile(norm_json):
-            norm_data = json.load(open(norm_json))
-            center = torch.tensor(norm_data["center"])
-            scale = norm_data["scale"]
-        else:
-            center = scale = None
+        norm_candidates = []
+        if camera_path.endswith(".json"):
+            norm_candidates.append(osp.join(osp.dirname(camera_path), "scene_norm.json"))
+        norm_candidates.append(f"{camera_path}/scene_norm.json")
+
+        center = scale = None
+        for norm_json in norm_candidates:
+            if os.path.isfile(norm_json):
+                norm_data = json.load(open(norm_json))
+                center = torch.tensor(norm_data["center"])
+                scale = norm_data["scale"]
+                break
         normalize_poses(poses=poses, center=center, scale=scale)
 
     # Build the camera dict
