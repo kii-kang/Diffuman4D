@@ -901,6 +901,8 @@ def prepare_performer_windows(args: argparse.Namespace) -> None:
     output_root = args.output_base_dir
     output_root.mkdir(parents=True, exist_ok=True)
     configs_dir = output_root / "configs"
+    if configs_dir.exists() and args.overwrite:
+        shutil.rmtree(configs_dir)
     configs_dir.mkdir(parents=True, exist_ok=True)
 
     summary_performers = []
@@ -917,6 +919,8 @@ def prepare_performer_windows(args: argparse.Namespace) -> None:
         )
 
         performer_dir = output_root / performer_id
+        if performer_dir.exists() and args.overwrite:
+            shutil.rmtree(performer_dir)
         performer_dir.mkdir(parents=True, exist_ok=True)
 
         performer_windows_summary = []
