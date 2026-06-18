@@ -223,9 +223,10 @@ class SpaTemDataset(Dataset):
                 raise ValueError(
                     f"Error: skeletons are out of range: {sample['skeletons'].min()} < {min_val} or {sample['skeletons'].max()} > {max_val}"
                 )
-            if min_val > sample["plucker_embeds"].min() or max_val < sample["plucker_embeds"].max():
+            if not torch.isfinite(sample["plucker_embeds"]).all():
                 raise ValueError(
-                    f"Error: plucker embeds are out of range: {sample['plucker_embeds'].min()} < {min_val} or {sample['plucker_embeds'].max()} > {max_val}"
+                    "Error: plucker embeds contain non-finite values: "
+                    f"min={sample['plucker_embeds'].min()}, max={sample['plucker_embeds'].max()}"
                 )
             if min_val > sample["cond_masks"].min() or max_val < sample["cond_masks"].max():
                 raise ValueError(
